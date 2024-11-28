@@ -23,7 +23,7 @@ def create_demo_template(
         click_mask = gr.State(None)
         ref_clicked_points = gr.State([])
         ref_origin_image = gr.State(None)
-        ref_click_mask = gr.State(None)
+        ref_mask = gr.State(None)
         with gr.Row():
             gr.Markdown(INFO)
         with gr.Row(equal_height=False):
@@ -53,26 +53,28 @@ def create_demo_template(
                                 )
                         with gr.Row():
                             run_button_click = gr.Button(
-                                label="Run EditAnying", interactive=True
+                                value="Run EditAnying", interactive=True
                             )
                 with gr.Tab("Brush🖌️"):
-                    source_image_brush = gr.Image(
-                        source="upload",
+                    source_image_brush = gr.ImageEditor(
+                        height=800,
                         label="Image: Upload an image and cover the region you want to edit with sketch",
-                        type="numpy",
-                        tool="sketch",
-                        brush_color="#00FFBF"
+                        type="pil",
+                        interactive=True,
+                        brush=gr.Brush(
+                            default_size=10,
+                            default_color="#00FFBF",
+                        ),
                     )
                     run_button = gr.Button(
-                        label="Run EditAnying", interactive=True)
+                        value="Run EditAnying", interactive=True)
                 with gr.Tab("All region"):
                     source_image_clean = gr.Image(
-                        source="upload",
                         label="Image: Upload an image",
                         type="numpy",
                     )
                     run_button_allregion = gr.Button(
-                        label="Run EditAnying", interactive=True)
+                        value="Run EditAnying", interactive=True)
                 with gr.Row():
                     # enable_all_generate = gr.Checkbox(
                     #     label="All Region Generation", value=False
@@ -130,14 +132,16 @@ def create_demo_template(
                     )
 
                 with gr.Accordion("Cross-image Drag Options", open=False):
-                    # ref_image = gr.Image(
-                    #     source='upload', label="Upload a reference image", type="pil", value=None)
-                    ref_image = gr.Image(
-                        source="upload",
+                    ref_image_brush = gr.ImageEditor(
+                        height=800,
                         label="Upload a reference image and cover the region you want to use with sketch",
                         type="pil",
-                        tool="sketch",
-                        brush_color="#00FFBF",
+                        interactive=True,
+                        brush=gr.Brush(
+                            default_size=10,
+                            default_color="#00FFBF",
+                        ),
+                        value=None,
                     )
                     with gr.Row():
                         ref_auto_prompt = gr.Checkbox(
@@ -159,10 +163,10 @@ def create_demo_template(
                     #             value="Foreground Point",
                     #             label="Point Label",
                     #             interactive=True, show_label=False)
-                    #         ref_clear_button_click = gr.Button(
-                    #             value="Clear Click Points", interactive=True)
-                    #         ref_clear_button_image = gr.Button(
-                    #             value="Clear Image", interactive=True)
+                            # ref_clear_button_click = gr.Button(
+                            #     value="Clear Click Points", interactive=True)
+                            # ref_clear_button_image = gr.Button(
+                            #     value="Clear Image", interactive=True)
                     with gr.Row():
                         reference_attn = gr.Checkbox(
                             label="reference_attn", value=True)
@@ -226,7 +230,7 @@ def create_demo_template(
 
                 with gr.Accordion("Advanced Options", open=False):
                     mask_image = gr.Image(
-                        source="upload",
+                        # source="upload",
                         label="Upload a predefined mask of edit region: Switch to Brush mode when using this!",
                         type="numpy",
                         value=None,
@@ -300,7 +304,7 @@ def create_demo_template(
             alpha_weight,
             use_scale_map,
             condition_model,
-            ref_image,
+            ref_image_brush,
             attention_auto_machine_weight,
             gn_auto_machine_weight,
             style_fidelity,
@@ -346,7 +350,7 @@ def create_demo_template(
             alpha_weight,
             use_scale_map,
             condition_model,
-            ref_image,
+            ref_image_brush,
             attention_auto_machine_weight,
             gn_auto_machine_weight,
             style_fidelity,
@@ -393,7 +397,7 @@ def create_demo_template(
             alpha_weight,
             use_scale_map,
             condition_model,
-            ref_image,
+            ref_image_brush,
             attention_auto_machine_weight,
             gn_auto_machine_weight,
             style_fidelity,
@@ -440,16 +444,31 @@ def create_demo_template(
             outputs=[source_image_click, clicked_points, click_mask],
         )
         clear_button_image.click(
-            fn=lambda: (None, [], None, None, None),
+            fn=lambda: (None, None, [], None, None, None),
             inputs=[],
             outputs=[
                 source_image_click,
+                origin_image,
                 clicked_points,
                 click_mask,
                 result_gallery_init,
                 result_text,
             ],
         )
+
+        # ref_image_brush.upload(
+        #     lambda image: image.copy() if image is not None else None,
+        #     inputs=[ref_image_brush],
+        #     outputs=[ref_origin_image],
+        # )
+        # ref_clear_button_image.click(
+        #     fn=lambda: (None, None),
+        #     inputs=[],
+        #     outputs=[
+        #         ref_image_brush,
+        #         ref_origin_image
+        #     ],
+        # )
 
         if examples is not None:
             with gr.Row():

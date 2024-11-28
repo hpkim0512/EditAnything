@@ -651,7 +651,7 @@ class EditAnythingLoraModel:
         else:
             this_controlnet_path = condition_model
         input_image = (
-            source_image["image"]
+            np.array(source_image["background"].convert('RGB'), dtype=np.uint8)
             if isinstance(source_image, dict)
             else np.array(source_image, dtype=np.uint8)
         )
@@ -671,7 +671,9 @@ class EditAnythingLoraModel:
                              input_image.shape[1], 3)) * 255
                 )
             else:
-                mask_image = source_image["mask"]
+                mask_image = np.array(source_image["layers"][0].convert('L'))
+                mask_image = ((mask_image > 0) * 255).astype(np.uint8)[:, :, None]
+                mask_image = np.concatenate([mask_image] * 3, axis=2)
         else:
             mask_image = np.array(mask_image, dtype=np.uint8)
         if self.default_controlnet_path != this_controlnet_path:
@@ -703,46 +705,53 @@ class EditAnythingLoraModel:
             self.last_ref_infer = False
 
         if ref_image is not None:
-            ref_mask = ref_image["mask"]
-            ref_image = ref_image["image"]
-            if ref_auto_prompt or ref_textinv:
-                bbox = get_bounding_box(
-                    np.array(ref_mask) / 255
-                )  # reverse the mask to make 1 the choosen region
-                cropped_ref_mask = ref_mask.crop(
-                    (bbox[0], bbox[1], bbox[2], bbox[3]))
-                cropped_ref_image = ref_image.crop(
-                    (bbox[0], bbox[1], bbox[2], bbox[3]))
-                # cropped_ref_image.save("debug.jpg")
-                cropped_ref_image = np.array(cropped_ref_image) * (
-                    np.array(cropped_ref_mask)[:, :, :3] / 255.0
-                )
-                cropped_ref_image = Image.fromarray(
-                    cropped_ref_image.astype("uint8"))
+            ref_mask = ref_image["layers"][0]
+            ref_image = ref_image["background"].convert('RGB')
 
-            if ref_auto_prompt:
-                generated_prompt = self.get_blip2_text(cropped_ref_image)
-                ref_prompt += generated_prompt
-                a_prompt += generated_prompt
-            print("Generated ref text:", ref_prompt)
-            print("Generated input text:", a_prompt)
-            self.last_ref_infer = True
-            # ref_image = cropped_ref_image
-            # ref_mask = cropped_ref_mask
-            if ref_textinv:
-                try:
-                    self.pipe.load_textual_inversion(ref_textinv_path)
-                    print("Load textinv embedding from:", ref_textinv_path)
-                except:
-                    print("No textinvert embeddings found.")
-                    ref_data_path = "./utils/tmp/textinv/img"
-                    if not os.path.exists(ref_data_path):
-                        os.makedirs(ref_data_path)
-                    cropped_ref_image.save(
-                        os.path.join(ref_data_path, 'ref.png'))
-                    print("Ref image region is save to:", ref_data_path)
-                    print(
-                        "Plese finetune with run_texutal_inversion.sh in utils folder to get the textinvert embeddings.")
+            bbox = get_bounding_box(
+                np.array(ref_mask.convert('L')) #/ 255
+            )  # reverse the mask to make 1 the choosen region
+
+            if bbox:
+                if ref_auto_prompt or ref_textinv:
+                    cropped_ref_mask = ref_mask.crop(
+                        (bbox[0], bbox[1], bbox[2], bbox[3]))
+                    cropped_ref_mask = np.array(cropped_ref_mask.convert('L'))[:, :, None]
+                    cropped_ref_mask = np.concatenate([cropped_ref_mask]*3, axis=2)
+                    cropped_ref_image = ref_image.crop(
+                        (bbox[0], bbox[1], bbox[2], bbox[3]))
+                    cropped_ref_image = np.array(cropped_ref_image)
+                    # cropped_ref_image.save("debug.jpg")
+                    cropped_ref_image = cropped_ref_image * (cropped_ref_mask > 0)
+                    cropped_ref_image = Image.fromarray(
+                        cropped_ref_image.astype("uint8"))
+
+                    if ref_auto_prompt:
+                        generated_prompt = self.get_blip2_text(cropped_ref_image)
+                        ref_prompt += generated_prompt
+                        a_prompt += generated_prompt
+                    print("Generated ref text:", ref_prompt)
+                    print("Generated input text:", a_prompt)
+                    self.last_ref_infer = True
+                    # ref_image = cropped_ref_image
+                    # ref_mask = cropped_ref_mask
+                    if ref_textinv:
+                        try:
+                            self.pipe.load_textual_inversion(ref_textinv_path)
+                            print("Load textinv embedding from:", ref_textinv_path)
+                        except:
+                            print("No textinvert embeddings found.")
+                            ref_data_path = "./utils/tmp/textinv/img"
+                            if not os.path.exists(ref_data_path):
+                                os.makedirs(ref_data_path)
+                            cropped_ref_image.save(
+                                os.path.join(ref_data_path, 'ref.png'))
+                            print("Ref image region is save to:", ref_data_path)
+                            print(
+                                "Plese finetune with run_texutal_inversion.sh in utils folder to get the textinvert embeddings.")
+            else:
+                print('ref_mask is not founded.') # ImageEditor
+                ref_mask = None
 
         else:
             ref_mask = None

@@ -59,19 +59,24 @@ def get_bounding_box(mask):
     mask = np.array(mask).astype(np.uint8)
 
     # Take the first channel (R) of the mask
-    mask = mask[:,:,0]
+    if mask.ndim > 2:
+        mask = mask[:,:,0]
 
     # Get the indices of elements that are not zero
     rows = np.any(mask, axis=0)
     cols = np.any(mask, axis=1)
     
     # Get the minimum and maximum indices where the elements are not zero
-    rmin, rmax = np.where(rows)[0][[0, -1]]
-    cmin, cmax = np.where(cols)[0][[0, -1]]
+    rows_where = np.where(rows)[0]
+    cols_where = np.where(cols)[0]
+    if len(rows_where):
+        rmin, rmax = rows_where[[0, -1]]
+        cmin, cmax = cols_where[[0, -1]]
+        
+        # Return as [xmin, ymin, xmax, ymax]
+        return [rmin, cmin, rmax, cmax]
     
-    # Return as [xmin, ymin, xmax, ymax]
-    return [rmin, cmin, rmax, cmax]
-
+    return None
 
 
 def save_input_to_file(func):

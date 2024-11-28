@@ -67,7 +67,6 @@ with gr.Blocks() as demo:
         #                                   blip_model=blip_model,
         #                                   lora_weight=0.5,
         #                                   )
-            create_demo_beauty(model.process, model.process_image_click)
         # with gr.TabItem('Generate Anything'):
         #     create_demo_generate_anything()
     # with gr.Tabs():
